@@ -1,6 +1,7 @@
 /*
 ** Peter Christakos - pechristakos@wpi.edu
-** Project 1 - Client Server 'http_client.c'
+** Project 1
+** Part 1 - Client Server 'http_client.c'
 */
 
 #include <stdio.h>
@@ -14,7 +15,6 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
-
 
 // get sock address for IPv4/IPv6
 void *get_address(struct sockaddr *sa) {
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
 	printf("argv[1]: %s\n", argv[1]);
 	printf("argv[2]: %s\n", argv[2]);
 	printf("argv[3]: %s\n", argv[3]);
-	
+
 
 	// set RTT flag to true if 3 arguments and one is '-p'
 	if (argc == 4) {
@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 			service = argv[3];
 			printf("RTT Activated.\n");
 			// print RTT
-		} else { fprintf(stderr, "ERROR: Option not known\n"); exit(1); }	
+		} else { fprintf(stderr, "ERROR: Option not known\n"); exit(1); }
 	} else if (argc == 3) {
 		node = argv[1];
 		service = argv[2];
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 	printf("Service: %s\n", service);
 
 	if ((status = getaddrinfo(node, service, &info, &servinfo)) != 0) {
-		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status)); 
+		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
 		return 1;
 	}
 
@@ -83,11 +83,11 @@ int main(int argc, char *argv[]) {
 
 	// loop through all the results and connect to the first we can
 
-	for(p = servinfo; p != NULL; p = p->ai_next) { 
+	for(p = servinfo; p != NULL; p = p->ai_next) {
 		// socket function creates endpoint for communication. Returns
 		// non-negative integer for success
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
-			perror("Client: Socket Error"); 
+			perror("Client: Socket Error");
 			continue;
 		}
 		// connect function returns 0 upon success
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
 		if (RTT_Flag == 1) {
 			printf("Connected with Round Trip Time: %ld sec\n", totalTIme);
 		}
-		
+
 		break;
 	}
 
@@ -136,5 +136,3 @@ int main(int argc, char *argv[]) {
 
 	return 0;
 }
-
-
