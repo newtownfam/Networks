@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
 	// record time of day for RTT purposes
 	gettimeofday(&tv, NULL);
-	startTime = tv.tv_sec;
+	startTime = tv.tv_usec;
 
 	// loop through all the results and connect to the first we can
 
@@ -111,11 +111,11 @@ int main(int argc, char *argv[]) {
 
 		// record time of day for RTT purposes
 		gettimeofday(&tv, NULL);
-		endTime = tv.tv_sec;
+		endTime = tv.tv_usec;
 		totalTIme = endTime - startTime;
 
 		if (RTT_Flag == 1) {
-			printf("Connected with Round Trip Time: %ld sec\n", totalTIme);
+			printf("Connected with Round Trip Time: %ld micro sec\n", totalTIme);
 			printf("\n");
 		}
 
