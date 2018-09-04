@@ -35,20 +35,26 @@ int main(int argc, char *argv[]) {
 	struct addrinfo info, *servinfo, *p; // servinfo and p will point to results
 	int status; // error code variable
 	char s[INET6_ADDRSTRLEN]; // char of IPv6 address
-	const char * node;
-	const char * service;
+	const char * node; // values to assign to inputs
+	const char * service; // value to assign to input
+	char message[100];
+	int len;
 
+/*
+	printf("\n");
+	printf("Input Variables: \n");
 	printf("argv[1]: %s\n", argv[1]);
 	printf("argv[2]: %s\n", argv[2]);
 	printf("argv[3]: %s\n", argv[3]);
-
-
+	printf("\n");
+*/
 	// set RTT flag to true if 3 arguments and one is '-p'
 	if (argc == 4) {
 		if (strcmp(argv[1], "-p") == 0) {
 			RTT_Flag = 1;
 			node = argv[2];
 			service = argv[3];
+			printf("\n");
 			printf("RTT Activated.\n");
 			// print RTT
 		} else { fprintf(stderr, "ERROR: Option not known\n"); exit(1); }
@@ -59,6 +65,11 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "ERROR: Invalid amount of arguments\n"); exit(1);
 	}
 
+	/* set up GET message */
+	sprintf(message, "GET /index.html HTTP/1.1\r\nHost: %s\r\n\r\n", node);
+	len = strlen(message);
+
+
 	memset(&info, 0, sizeof(info)); // make sure struct is empty
 	info.ai_family = AF_UNSPEC; // don't care if IPv4 or 6
 	info.ai_socktype = SOCK_STREAM; // TCP socket stream
@@ -66,8 +77,10 @@ int main(int argc, char *argv[]) {
 	// if error code doesn't equal 0, throw an error
 	// connection data saved to servinfo
 
+	printf("\n");
 	printf("Node: %s\n", node);
 	printf("Service: %s\n", service);
+	printf("\n");
 
 	if ((status = getaddrinfo(node, service, &info, &servinfo)) != 0) {
 		fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(status));
@@ -75,7 +88,6 @@ int main(int argc, char *argv[]) {
 	}
 
 	// servinfo now points to a linked list of 1 or more struct addrinfos
-
 
 	// record time of day for RTT purposes
 	gettimeofday(&tv, NULL);
@@ -104,6 +116,7 @@ int main(int argc, char *argv[]) {
 
 		if (RTT_Flag == 1) {
 			printf("Connected with Round Trip Time: %ld sec\n", totalTIme);
+			printf("\n");
 		}
 
 		break;
@@ -121,17 +134,21 @@ int main(int argc, char *argv[]) {
 
 	freeaddrinfo(servinfo); // all done with this structure
 
-	printf("before recv function\n");
+    if(len != (send(sockfd, message, strlen(message), 0))) {
+    perror("client: send");
+    exit(1);
+    }
+
 
 	if ((numbytes = recv(sockfd, buf, 99, 0)) == -1) {
 	    perror("recv");
 	    exit(1);
 	}
 
-	printf("after recv function\n");
-
 	buf[numbytes] = '\0';
+
 	printf("Client: Received! '%s'\n",buf);
+	printf("\n");
 	close(sockfd); // close socket connection
 
 	return 0;
