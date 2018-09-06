@@ -15,6 +15,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
+#include<fcntl.h> //fcntl
+
+
+#define MAXDATASIZE 100 // max number of bytes we can get at once 
+
 
 // get sock address for IPv4/IPv6
 void *get_address(struct sockaddr *sa) {
@@ -25,13 +30,19 @@ void *get_address(struct sockaddr *sa) {
 	return &(((struct sockaddr_in6*)sa)->sin6_addr); // return IPv6 address
 }
 
+/*
+    Receive data in multiple chunks by checking a non-blocking socket
+    Timeout in seconds
+*/
+
 
 int main(int argc, char *argv[]) {
 	struct timeval tv;
 	time_t startTime, endTime, totalTIme;
 	int RTT_Flag = 0; // 0 is no, 1 is yes
+	int wait_counter = 0; // for looping through buffer and seeing EOF
 	int sockfd, numbytes;
-	char buf[100];
+	char buf[MAXDATASIZE];
 	struct addrinfo info, *servinfo, *p; // servinfo and p will point to results
 	int status; // error code variable
 	char s[INET6_ADDRSTRLEN]; // char of IPv6 address
@@ -40,14 +51,6 @@ int main(int argc, char *argv[]) {
 	char message[100];
 	int len;
 
-/*
-	printf("\n");
-	printf("Input Variables: \n");
-	printf("argv[1]: %s\n", argv[1]);
-	printf("argv[2]: %s\n", argv[2]);
-	printf("argv[3]: %s\n", argv[3]);
-	printf("\n");
-*/
 	// set RTT flag to true if 3 arguments and one is '-p'
 	if (argc == 4) {
 		if (strcmp(argv[1], "-p") == 0) {
@@ -65,16 +68,15 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "ERROR: Invalid amount of arguments\n"); exit(1);
 	}
 
-	/* set up GET message */
+	// set up GET message
 	sprintf(message, "GET /index.html HTTP/1.1\r\nHost: %s\r\n\r\n", node);
 	len = strlen(message);
-
 
 	memset(&info, 0, sizeof(info)); // make sure struct is empty
 	info.ai_family = AF_UNSPEC; // don't care if IPv4 or 6
 	info.ai_socktype = SOCK_STREAM; // TCP socket stream
 
-	// if error code doesn't equal 0, throw an error
+	// if error code doesn't equal 0, throw    an error
 	// connection data saved to servinfo
 
 	printf("\n");
@@ -87,6 +89,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	printf("Got Past getaddrinfo\n");
+
 	// servinfo now points to a linked list of 1 or more struct addrinfos
 
 	// record time of day for RTT purposes
@@ -96,18 +100,22 @@ int main(int argc, char *argv[]) {
 	// loop through all the results and connect to the first we can
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
+		printf("in the loop\n");
 		// socket function creates endpoint for communication. Returns
 		// non-negative integer for success
 		if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
 			perror("Client: Socket Error");
 			continue;
 		}
-		// connect function returns 0 upon success
+
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
-			perror("Client: Connection Error");
-			close(sockfd);
-			continue;
-		}
+			printf("Hello\n");
+            close(sockfd);
+            perror("Client: Connection Error");
+            continue;
+        }
+
+		printf("connected\n");
 
 		// record time of day for RTT purposes
 		gettimeofday(&tv, NULL);
@@ -122,11 +130,15 @@ int main(int argc, char *argv[]) {
 		break;
 	}
 
+	printf("got past for loop\n");
+
 	// throw null error for p if connection failed
 	if (p == NULL) {
 		fprintf(stderr, "Client: Failed to Connect\n");
 		return 2;
 	}
+
+	printf("client didnt fail to connect\n");
 
 	// convert IPv4 or IPv6 from binary to text
 	inet_ntop(p->ai_family, get_address((struct sockaddr *)p->ai_addr), s, sizeof s);
@@ -139,16 +151,27 @@ int main(int argc, char *argv[]) {
     exit(1);
     }
 
+    // loop through and print everything in the buffer
+    
+    fcntl(sockfd, F_SETFL, O_NONBLOCK); // sets socket to non blocking - prevents hanging
+   
+    while(1) {
+    	memset(buf ,0 , MAXDATASIZE);  //clear the variable
+        if((numbytes =  recv(sockfd , buf , MAXDATASIZE-1 , 0) ) < 0) {
+        	// wait and try again, if greater than 1 then EOF
+        	usleep(100000);
+        	wait_counter ++;
+        	if (wait_counter > 1) {
+        		break;
+        	}
+        } else {
+            printf("%s" , buf);
+            wait_counter = 0;
+        }
+    }
 
-	if ((numbytes = recv(sockfd, buf, 99, 0)) == -1) {
-	    perror("recv");
-	    exit(1);
-	}
-
-	buf[numbytes] = '\0';
-
-	printf("Client: Received! '%s'\n",buf);
-	printf("\n");
+ 
+	printf("\nClient: Complete\n\n");
 	close(sockfd); // close socket connection
 
 	return 0;
