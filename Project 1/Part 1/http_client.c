@@ -46,10 +46,15 @@ int main(int argc, char *argv[]) {
 	struct addrinfo info, *servinfo, *p; // servinfo and p will point to results
 	int status; // error code variable
 	char s[INET6_ADDRSTRLEN]; // char of IPv6 address
-	const char * node; // values to assign to inputs
+	char * node; // values to assign to inputs
 	const char * port; // value to assign to input
+	char * nodeAddress;
+	char * pch;
+	char * nodePath = malloc(100*sizeof(char));
 	char message[100];
 	int len;
+	char one[50]; // two arrays for copying/tokenizing purposes 
+	char two[50];
 
 	// set RTT flag to true if 3 arguments and one is '-p'
 	if (argc == 4) {
@@ -68,8 +73,31 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "ERROR: Invalid amount of arguments\n"); exit(1);
 	}
 
+
+	// Tokenize the input 
+	
+	pch = strtok(node, "/");
+	nodeAddress = pch;
+	int count = 0;
+
+	while(pch != NULL) {
+	
+		if (count != 0) {
+			strcpy(one, "/");
+			strcpy(two, pch);
+			strcat(nodePath , strcat(one, two));
+			//printf("%s\n", nodePath);
+		}
+		count++;
+		pch = strtok(NULL, "/");
+	}	
+
+	printf("NodeAddress: %s\n", nodeAddress);
+	printf("NodePath = %s\n", nodePath);
+
+	
 	// set up GET message
-	sprintf(message, "GET /index.html HTTP/1.1\r\nHost: %s\r\n\r\n", node);
+	sprintf(message, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", nodePath, nodeAddress);
 	len = strlen(message);
 
 	memset(&info, 0, sizeof(info)); // make sure struct is empty
@@ -111,8 +139,6 @@ int main(int argc, char *argv[]) {
             perror("Client: Connection Error");
             break;
         }
-
-		printf("Connect function worked!\n\n");
 
 		// record time of day for RTT purposes
 		gettimeofday(&tv, NULL);
