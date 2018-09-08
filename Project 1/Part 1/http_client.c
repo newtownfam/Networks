@@ -1,7 +1,7 @@
 /*
 ** Peter Christakos - pechristakos@wpi.edu
 ** Project 1
-** Part 1 - Client Server 'http_client.c'
+** Part 1 - Client 'http_client.c'
 */
 
 #include <stdio.h>
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
 	char * nodePath = malloc(100*sizeof(char));
 	char message[100];
 	int len;
-	char one[50]; // two arrays for copying/tokenizing purposes 
+	char one[50]; // two arrays for copying/tokeinizing purposes 
 	char two[50];
 
 	// set RTT flag to true if 3 arguments and one is '-p'
@@ -90,15 +90,24 @@ int main(int argc, char *argv[]) {
 		}
 		count++;
 		pch = strtok(NULL, "/");
-	}	
+	}
+
+	// add a '/' to the end of the path
+	strcpy(one, "/");
+	strcat(nodePath, one);
 
 	printf("NodeAddress: %s\n", nodeAddress);
 	printf("NodePath = %s\n", nodePath);
 
 	
 	// set up GET message
-	sprintf(message, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", nodePath, nodeAddress);
-	len = strlen(message);
+	if (strcmp(nodePath, "") == 0) {
+		sprintf(message, "GET / HTTP/1.1\r\nHost: %s\r\n\r\n", node);
+		len = strlen(message);
+	} else {
+		sprintf(message, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", nodePath, nodeAddress);
+		len = strlen(message);
+	}
 
 	memset(&info, 0, sizeof(info)); // make sure struct is empty
 	info.ai_family = AF_UNSPEC; // don't care if IPv4 or 6
