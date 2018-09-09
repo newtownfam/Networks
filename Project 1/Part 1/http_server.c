@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     char * port; // holds input port value
     char buf[MAXDATASIZE];
     char message[1000];
-    int numbytes;
+    //int numbytes;
 
     /* set up sigterm */
     struct sigaction action;
@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
     	sin_size = sizeof their_addr;
 
         /* accept connection */
+        printf("accepted connection\n");
     	newfd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
     	if (newfd == -1) {
@@ -145,23 +146,14 @@ int main(int argc, char *argv[])
     	inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof s);
     	printf("server: connected to %s\n", s);
 
-        if (!fork()) { // this is the child process
-            close(sockfd); // child doesn't need the listener
+        if (!fork()) { // child process
+            close(sockfd); // child doesn't need listener
 
             /* recieve request */
-            /* set the socket to non blocking
-    		This prevents the socket from blocking us while waiting for more data, which would cause the program to hang */
-
-    		// count will allow us to check if we have waited for data multiple times, and break if we have
-            int count = 0;
             
             memset(buf, 0, MAXDATASIZE);
             recv(newfd, buf, MAXDATASIZE-1, 0);
-           	// printf("after recv function\n");
-            printf("\nbuf: %s\n", buf);
-
-			//sprintf(message, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, address);
-			//len = strlen(message);
+            printf("\nBuffer: %s\n", buf);
 
     		char * temp = strstr(buf, "TMDG.html");
 
@@ -170,44 +162,43 @@ int main(int argc, char *argv[])
     			printf("404 not found\n");
     			sprintf(message, "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\nContent-length: 0\r\n\r\n");
     			send(newfd, message, strlen(message), 0);
+    			close(newfd);
+    			exit(0);
 
     		} else {
     			printf("200 OK\n");
 
-    			//// NIGGA WE MADE IT - RIGHT HERE
-
 				/* 200 OK */
             	/* Read html file */
-    			char buffer[1000];
     			FILE *sendFile = fopen("TMDG.html", "r");
     			fseek(sendFile, 0L, SEEK_END);
     			int content_size = ftell(sendFile);
+    			char buffer[content_size];
     			rewind(sendFile);
 
     			sprintf(message, "HTTP/1.1 200 OK\r\nContent-type: text/html\r\nContent-length: %d\r\n\r\n", content_size);
     			send(newfd, message, strlen(message), 0);
 
-    			while(!feof(sendFile)) {
-    				int read = fread(buffer, sizeof(unsigned char), 1000, sendFile);
-    				if(read < 1) {
-    					break;
-    				}
-    			}	
-    			do {
-    				int numsent = send(newfd, buffer, (int)read, 0);
+    			/* Send html file */
+    			int read = fread(buffer, sizeof(unsigned char), content_size, sendFile);
+    			char * buffer_ptr = buffer;	
+    			if (read > 0) {
+    				int numsent = send(newfd, buffer_ptr, (int)read, 0);
+    				printf("\nSuccessfully sent %i bytes to %s!\n\n", numsent, s);
    	 				if(numsent < 1) {
     					fprintf(stderr, "Server: send");
     					break;
     				}
-    			} while (read > 0);	
-    			fclose(sendFile); 
+    			}
+    			fclose(sendFile);
+
+    			close(newfd);
+    			exit(0);
     		}
     		close(newfd);
-    		exit(0);
-    	}
-    	close(newfd);
-    }	
-    printf("Process terminated\n");
+    	}	
 
+	}
+	printf("Process terminated\n");
     return 0;
 }
