@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
     	sin_size = sizeof their_addr;
 
         /* accept connection */
-        printf("accepted connection\n");
+        //printf("accepted connection\n");
     	newfd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
 
     	if (newfd == -1) {
@@ -156,9 +156,10 @@ int main(int argc, char *argv[])
             printf("\nBuffer: %s\n", buf);
 
     		char * temp = strstr(buf, "TMDG.html");
+    		char * temp2 = strstr(buf, "index.html");
 
 			/* 404 not found */
-    		if(!temp) {
+    		if(!temp && !temp2) {
     			printf("404 not found\n");
     			sprintf(message, "HTTP/1.1 404 Not Found\r\nContent-type: text/html\r\nContent-length: 0\r\n\r\n");
     			send(newfd, message, strlen(message), 0);

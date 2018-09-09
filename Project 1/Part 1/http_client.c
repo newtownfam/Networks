@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
 
 	// record time of day for RTT purposes
 	gettimeofday(&tv, NULL);
-	startTime = tv.tv_usec;
+	startTime = tv.tv_sec * 1000 + (tv.tv_usec) / 1000;
 
 	// loop through all the results and connect to the first we can
 
@@ -151,12 +151,12 @@ int main(int argc, char *argv[]) {
 
 		// record time of day for RTT purposes
 		gettimeofday(&tv, NULL);
-		endTime = tv.tv_usec;
-		totalTime = endTime - startTime;
+		endTime = tv.tv_sec * 1000 + (tv.tv_usec) / 1000;
+
+		totalTime = (endTime - startTime);
 
 		if (RTT_Flag == 1) {
-			printf("Connected with Round Trip Time: %ld micro sec\n", totalTime);
-			printf("\n");
+			printf("Connected with Round Trip Time: %ld milliseconds\n\n", totalTime);
 		}
 
 		break;
@@ -167,7 +167,6 @@ int main(int argc, char *argv[]) {
 		fprintf(stderr, "Client: Failed to Connect\n");
 		return 2;
 	}
-
 
 	// convert IPv4 or IPv6 from binary to text
 	inet_ntop(p->ai_family, get_address((struct sockaddr *)p->ai_addr), s, sizeof s);
