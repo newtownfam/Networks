@@ -18,7 +18,7 @@
 #include<fcntl.h> //fcntl
 
 
-#define MAXDATASIZE 100 // max number of bytes we can get at once 
+#define MAXDATASIZE 100
 
 
 // get sock address for IPv4/IPv6
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
     	memset(buf ,0 , MAXDATASIZE);  //clear the variable
         if((numbytes =  recv(sockfd , buf , MAXDATASIZE-1 , 0) ) < 0) {
         	// wait and try again, if greater than 1 then EOF
-        	usleep(100000);
+        	sleep(1);
         	wait_counter ++;
         	if (wait_counter > 1) {
         		break;
