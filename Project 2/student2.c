@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "project2.h"
  
 /* ***************************************************************************
@@ -26,35 +27,17 @@
  * All these routines are in layer 4.
  */
 
-/* Sender and Receiver structs */
+int sequence, counter = 0;
+struct msg buffer;
 
-enum State {
-    WAIT_LAYER5,
-    WAIT_ACK
-};
+/* Checksum */
 
- struct Sender {
-    enum State state;
-    int sequence;
-    float rtt;
-    struct pkt previous;
-} A;
-
-struct Receiver {
-    int sequence;
-} B;
-
-/* Checksum function */
-
-int calc_checksum(struct pkt *packet) {
-  int checksum = 0;
+int calcCheck (char data [20]) {
   int i;
-  checksum += packet->seqnum; // seqnum = index number of stream
-  checksum += packet->acknum; // acknum = number of bytes received
-  for (int i = 0; i < 20; i++) { checksum += packet->payload[i]; }
-  return checksum; 
+  int checksum=0;
+  for (i = 0; i < 20; i++) { checksum += data[i]; }
+  return checksum;
 }
-
 
 
 /* 
@@ -65,27 +48,27 @@ int calc_checksum(struct pkt *packet) {
  * in-order, and correctly, to the receiving side upper layer.
  */
 void A_output(struct msg message) {
-  struct pkt packet;
+  int i;
+  struct pkt newPkt;
+  
+  newPkt.seqnum = sequence%2;
 
-  /* make sure sender isn't still waiting for an acknowledgement */ 
-  if (A.state != WAIT_LAYER5) {
-    printf("A_output: not yet acked. Drop: %s\n", message.data);
-    exit(1);
+  /* saves coming message into new packets */
+  for (i = 0; i < sizeof(message.data); i++) {
+      newPkt.payload[i] = message.data[i];
+      buffer.data[i] = message.data[i];
   }
 
-  printf("A_output: Sending: %s\n", message.data);
+  /* calculate checksum for all messages */
+  /* sending messages to layer3, the network layer */
+  newPkt.checksum = calcCheck(newPkt.payload);
 
-  /* set packet data to sender struct */
-  packet.seqnum = A.sequence; 
-  memmove(packet.payload, mesage.data, 20);
-  packet.checksum = calc_checksum(&packet);
-  A.previous = packet;
-  A.state = WAIT_ACK;
-  
-  /* send to layer 3 and start timer */
-  tolayer3(0, packet);
-  starttimer(0, A.rtt);
+  printf("A_output: sending message: %s\n", newPkt.payload);
+
+  startTimer (0, 20.0);
+  tolayer3 (0, newPkt);
 }
+
 
 /*
  * Just like A_output, but residing on the B side.  USED only when the 
@@ -102,23 +85,23 @@ void B_output(struct msg message)  {
  * packet is the (possibly corrupted) packet sent from the B-side.
  */
 void A_input(struct pkt packet) {
+  int i;
+  struct msg newMsg;
+  printf("A_input: reading ack from B...\n");
+  stopTimer (0);
   
-  if(A.state != WAIT_ACK) {
-    printf("A_input: error, not A->B. Exiting...\n");
-    exit(1);
-  }
+  /* 
+   * If ack > 0, send msg from buffer
+   * If ack < 0, send previous msg
+  /* 
+
+  /* negative */
+  if (packet.acknum == 0 && sequence%2 == 0) { sequence++;}
+  else if (packet.acknum =1 && sequence%2 == 1) { sequence++; }
   
-  if (packet.ackum != A.seq) {
-    printf("A-input: incorrect ACK. Exiting...\n");
-    exit(1);
-  }
-
-  printf("A_input: Successful ACK!\n");
-  stoptimer(0);
-  A.sequence = 1 - A.sequence;
-  A.state = WAIT_LAYER5;
-
-}
+  /* positive */
+  else { A_output (buffer); }
+} 
 
 /*
  * A_timerinterrupt()  This routine will be called when A's timer expires 
@@ -127,35 +110,16 @@ void A_input(struct pkt packet) {
  * and stoptimer() in the writeup for how the timer is started and stopped.
  */
 void A_timerinterrupt() {
-  if (A.state != WAIT_ACK) {
-    printf("A_timerinterrupt: not waiting for an ACK. Exiting...\n");
-    exit(1);
-  }
-  printf("A_timerinterrupt: resending last packet: %s.\n", A.previous.payload);
-  tolayer3(0, A.previous);
-  starttimer(0, A.rtt);
-
+   A_output (buffer);
 }  
 
 /* The following routine will be called once (only) before any other    */
 /* entity A routines are called. You can use it to do any initialization */
 void A_init() {
-  A.state = WAIT_LAYER5;
-  A.sequence = 0;
-  A.rtt = 15;
+  /* N/A */
 }
 
 
-/* 
- * Note that with simplex transfer from A-to-B, there is no routine  B_output() 
- */
-
-void send_ack(int AorB, int ack) {
-  struct pkt packet;
-  packet.acknum = ack;
-  packet.checksum = calc_checksum(&packet);
-  tolayer3(AorB, packet);
-}
 
 /*
  * B_input(packet),where packet is a structure of type pkt. This routine 
@@ -164,22 +128,31 @@ void send_ack(int AorB, int ack) {
  * packet is the (possibly corrupted) packet sent from the A-side.
  */
 void B_input(struct pkt packet) {
-  struct pkt sender_packet;
-  if (packet.checksum != calc_checksum(&packet)) {
-    printf("B_input: packet corrupted. Sending NAK.\n");
-    send_ack(1, 1 - B.sequence);
-    exit(1);
+  int i;
+  int localchecksum;
+  struct msg newMsg;
+  struct pkt ackPkt;
+  
+  /*calculate checksum and send it to layer 3 */
+  localchecksum = calcCheck (packet.payload);
+  if (localchecksum != packet.checksum) {
+      ackPkt.acknum =- 1;
+      tolayer3(1, ackPkt);
+  } 
+
+  else {
+    
+    //copies payload into message and passes it onto layer 5
+    for (i = 0; i < 20; i++) {
+      newMsg.data[i] = packet.payload[i];
+    }
+
+    printf("B_input: Message Received: %s\n", newMsg.data);
+    tolayer5 (1, newMsg);
+    printf("B_input: Sending to Layer 3...\n");
+    ackPkt.acknum = packet.seqnum;
+    tolayer3 (1, ackPkt);
   }
-  if (packet.seqnum != B.sequence) {
-    printf("B_input: incorrect seq. Sending NAK...\n");
-    send_ack(1, 1 - B.sequence);
-    exit(1);
-  }
-    printf(" B_input: recv message: %s\n", packet.payload);
-    printf(" B_input: send ACK.\n");
-    send_ack(1, B.sequence);
-    tolayer5(1, packet.payload);
-    B.sequence = 1 - B.sequence;
 }
 
 /*
@@ -189,7 +162,7 @@ void B_input(struct pkt packet) {
  * and stoptimer() in the writeup for how the timer is started and stopped.
  */
 void  B_timerinterrupt() {
-  printf("Ignoring for now...\n", );
+  /* N/A */
 }
 
 /* 
@@ -197,6 +170,6 @@ void  B_timerinterrupt() {
  * entity B routines are called. You can use it to do any initialization 
  */
 void B_init() {
-  B.seq = 0;
+   /* N/A */
 }
 

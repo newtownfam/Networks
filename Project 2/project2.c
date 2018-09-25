@@ -133,7 +133,7 @@ int main( int argc, char *argv[] )     {
 //  Do our initialization and any requested by student's Transport Layer 
     CallingArgc = argc;
     CallingArgv = argv;
-    init( );
+    init();
     A_init();
     B_init();
    
@@ -202,8 +202,8 @@ int main( int argc, char *argv[] )     {
                 GenerateNextArrival();           // set up future arrival 
                 NumMsgs5To4++;                   // # msgs from layer 5 to 4 
             }
-            if ( currentEntity == AEntity )  // Pass the data to layer 4 here 
-                A_output(msg2give);  
+            if ( currentEntity == AEntity ) // Pass the data to layer 4 here 
+                A_output(msg2give);
             else
                 B_output(msg2give);  
         }                              /* END of event is from layer 5 */
@@ -878,6 +878,7 @@ void tolayer5( int AorB, struct msg message) {
     // Note that we're asking for the string that was generated on behalf
     // of the other entity.
     GetMessageString( (AorB + 1) % 2, j, ExpectedString ); 
+    printf("expected string: %s\n",ExpectedString);
     if ( strncmp( ExpectedString, &(message.data[0]), MESSAGE_LENGTH ) != 0 ) {
         printf( "\t\tTOLAYER5:  PANIC!!  Data Received in this packet are wrong\n");
         NumMsgs5To4WithErr++;   // number of messages incorrectly received
