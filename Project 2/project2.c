@@ -1,4 +1,4 @@
-/* ***************************************************************************
+ /* ***************************************************************************
 ALTERNATING BIT AND GO-BACK-N NETWORK EMULATOR: 
 
    This code should be used for unidirectional or bidirectional
